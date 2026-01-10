@@ -484,6 +484,11 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quit_earl
     return ConversationHandler.END
 
 
+def get_total_pages(total_count: int) -> int:
+    """Calculate total number of pages for pagination."""
+    return (total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE
+
+
 def build_delete_words_keyboard(words: list, page: int, total_count: int) -> InlineKeyboardMarkup:
     """Build inline keyboard for word deletion with pagination."""
     keyboard = []
@@ -502,10 +507,11 @@ def build_delete_words_keyboard(words: list, page: int, total_count: int) -> Inl
     
     # Pagination buttons
     nav_buttons = []
+    total_pages = get_total_pages(total_count)
+    
     if page > 0:
         nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"del_page_{page - 1}"))
     
-    total_pages = (total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE
     if page < total_pages - 1:
         nav_buttons.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"del_page_{page + 1}"))
     
@@ -532,7 +538,8 @@ async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
     keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
     
-    page_info = f"Страница 1/{(total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE}" if total_count > DELETE_WORDS_PER_PAGE else ""
+    total_pages = get_total_pages(total_count)
+    page_info = f"Страница 1/{total_pages}" if total_pages > 1 else ""
     
     await update.message.reply_text(
         f"🗑 Выбери слово для удаления:\n{page_info}",
@@ -564,8 +571,8 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
             return
         
         keyboard = build_delete_words_keyboard(words, page=page, total_count=total_count)
-        total_pages = (total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE
-        page_info = f"Страница {page + 1}/{total_pages}" if total_count > DELETE_WORDS_PER_PAGE else ""
+        total_pages = get_total_pages(total_count)
+        page_info = f"Страница {page + 1}/{total_pages}" if total_pages > 1 else ""
         
         await query.edit_message_text(
             f"🗑 Выбери слово для удаления:\n{page_info}",
@@ -575,7 +582,6 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
     
     if data.startswith("del_word_"):
         word_id = int(data.replace("del_word_", ""))
-        context.user_data["delete_word_id"] = word_id
         
         keyboard = InlineKeyboardMarkup([
             [
@@ -609,7 +615,8 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         
         words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
         keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
-        page_info = f"Страница 1/{(total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE}" if total_count > DELETE_WORDS_PER_PAGE else ""
+        total_pages = get_total_pages(total_count)
+        page_info = f"Страница 1/{total_pages}" if total_pages > 1 else ""
         
         await query.edit_message_text(
             f"🗑 Выбери слово для удаления:\n{page_info}",
