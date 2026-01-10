@@ -150,3 +150,26 @@ def get_word_count(user_id: int, word_type: Optional[str] = None) -> int:
                 (user_id,)
             )
         return cursor.fetchone()[0]
+
+
+def get_words_paginated(user_id: int, offset: int = 0, limit: int = 5) -> list:
+    """Get words for a user with pagination."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM words WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (user_id, limit, offset)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def delete_word(user_id: int, word_id: int) -> bool:
+    """Delete a word by ID. Returns True if word was deleted."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM words WHERE id = ? AND user_id = ?",
+            (word_id, user_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0

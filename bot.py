@@ -26,13 +26,15 @@ MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
     [
         ["📚 Тест по всем словам"],
         ["📝 Тест по 30 последним словам"],
-        ["➕ Добавить слово"]
+        ["➕ Добавить слово"],
+        ["🗑 Удалить слово"]
     ],
     resize_keyboard=True
 )
 
 ADDING_TYPE, ADDING_VERB_FORMS, ADDING_WORD1, ADDING_WORD2 = range(4)
 QUIZ_ANSWER = range(4, 5)[0]
+DELETE_WORDS_PER_PAGE = 5
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -482,6 +484,139 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quit_earl
     return ConversationHandler.END
 
 
+def build_delete_words_keyboard(words: list, page: int, total_count: int) -> InlineKeyboardMarkup:
+    """Build inline keyboard for word deletion with pagination."""
+    keyboard = []
+    
+    for word in words:
+        if word["word_type"] == "translation":
+            label = f"🔤 {word['word1']} — {word['word2']}"
+        else:
+            label = f"📖 {word['word1']} → {word['word2']}"
+        
+        # Truncate label if too long for Telegram button
+        if len(label) > 40:
+            label = label[:37] + "..."
+        
+        keyboard.append([InlineKeyboardButton(label, callback_data=f"del_word_{word['id']}")])
+    
+    # Pagination buttons
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"del_page_{page - 1}"))
+    
+    total_pages = (total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"del_page_{page + 1}"))
+    
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+    
+    keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data="del_close")])
+    
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Start the word deletion process."""
+    user_id = update.effective_user.id
+    total_count = db.get_word_count(user_id)
+    
+    if total_count == 0:
+        await update.message.reply_text(
+            "У тебя пока нет добавленных слов! 📭",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return
+    
+    words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
+    keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
+    
+    page_info = f"Страница 1/{(total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE}" if total_count > DELETE_WORDS_PER_PAGE else ""
+    
+    await update.message.reply_text(
+        f"🗑 Выбери слово для удаления:\n{page_info}",
+        reply_markup=keyboard
+    )
+
+
+async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle delete word callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    data = query.data
+    
+    if data == "del_close":
+        await query.edit_message_text("Удаление отменено.")
+        return
+    
+    if data.startswith("del_page_"):
+        page = int(data.replace("del_page_", ""))
+        offset = page * DELETE_WORDS_PER_PAGE
+        
+        total_count = db.get_word_count(user_id)
+        words = db.get_words_paginated(user_id, offset=offset, limit=DELETE_WORDS_PER_PAGE)
+        
+        if not words:
+            await query.edit_message_text("Слова не найдены.")
+            return
+        
+        keyboard = build_delete_words_keyboard(words, page=page, total_count=total_count)
+        total_pages = (total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE
+        page_info = f"Страница {page + 1}/{total_pages}" if total_count > DELETE_WORDS_PER_PAGE else ""
+        
+        await query.edit_message_text(
+            f"🗑 Выбери слово для удаления:\n{page_info}",
+            reply_markup=keyboard
+        )
+        return
+    
+    if data.startswith("del_word_"):
+        word_id = int(data.replace("del_word_", ""))
+        context.user_data["delete_word_id"] = word_id
+        
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Да, удалить", callback_data=f"del_confirm_{word_id}"),
+                InlineKeyboardButton("❌ Нет", callback_data="del_cancel")
+            ]
+        ])
+        
+        await query.edit_message_text(
+            "❓ Ты уверен, что хочешь удалить это слово?",
+            reply_markup=keyboard
+        )
+        return
+    
+    if data.startswith("del_confirm_"):
+        word_id = int(data.replace("del_confirm_", ""))
+        
+        if db.delete_word(user_id, word_id):
+            await query.edit_message_text("✅ Слово удалено!")
+        else:
+            await query.edit_message_text("❌ Не удалось удалить слово.")
+        return
+    
+    if data == "del_cancel":
+        # Return to word list
+        total_count = db.get_word_count(user_id)
+        
+        if total_count == 0:
+            await query.edit_message_text("У тебя больше нет слов для удаления! 📭")
+            return
+        
+        words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
+        keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
+        page_info = f"Страница 1/{(total_count + DELETE_WORDS_PER_PAGE - 1) // DELETE_WORDS_PER_PAGE}" if total_count > DELETE_WORDS_PER_PAGE else ""
+        
+        await query.edit_message_text(
+            f"🗑 Выбери слово для удаления:\n{page_info}",
+            reply_markup=keyboard
+        )
+
+
 async def handle_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle main menu button presses."""
     text = update.message.text
@@ -530,6 +665,8 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(add_word_handler)
     application.add_handler(quiz_handler)
+    application.add_handler(MessageHandler(filters.Regex("^🗑 Удалить слово$"), delete_word_start))
+    application.add_handler(CallbackQueryHandler(handle_delete_callback, pattern="^del_"))
     
     logger.info("Bot started!")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
