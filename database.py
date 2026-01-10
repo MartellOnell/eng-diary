@@ -78,13 +78,13 @@ def add_translation_word(user_id: int, english: str, russian: str) -> int:
         return cursor.lastrowid
 
 
-def add_irregular_verb(user_id: int, form1: str, form2: str, form3: str) -> int:
-    """Add an irregular verb with 3 forms. Returns the word ID."""
+def add_irregular_verb(user_id: int, form_from: str, form_to: str, form_pair: str) -> int:
+    """Add an irregular verb pair. form_pair is '1-2' or '2-3'. Returns the word ID."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO words (user_id, word_type, word1, word2, word3, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, "irregular", form1, form2, form3, datetime.now().isoformat())
+            (user_id, "irregular", form_from, form_to, form_pair, datetime.now().isoformat())
         )
         conn.commit()
         return cursor.lastrowid

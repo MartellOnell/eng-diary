@@ -31,7 +31,7 @@ MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-ADDING_TYPE, ADDING_WORD1, ADDING_WORD2, ADDING_WORD3 = range(4)
+ADDING_TYPE, ADDING_VERB_FORMS, ADDING_WORD1, ADDING_WORD2 = range(4)
 QUIZ_ANSWER = range(4, 5)[0]
 
 
@@ -85,40 +85,113 @@ async def add_word_type_chosen(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_text(
             "Введи английское слово:"
         )
+        return ADDING_WORD1
     else:
-        await query.edit_message_text(
-            "Введи первую форму глагола (Infinitive):\n"
-            "Например: go"
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["1️⃣ → 2️⃣ (Infinitive → Past Simple)"],
+                ["2️⃣ → 3️⃣ (Past Simple → Past Participle)"],
+                ["❌ Отмена"]
+            ],
+            resize_keyboard=True
         )
+        await query.edit_message_text(
+            "Выбери какие формы неправильного глагола ты хочешь добавить:"
+        )
+        await query.message.reply_text(
+            "Выбери пару форм:",
+            reply_markup=keyboard
+        )
+        return ADDING_VERB_FORMS
+
+
+async def add_verb_forms_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle verb forms selection."""
+    text = update.message.text
+    
+    if text == "❌ Отмена":
+        await update.message.reply_text(
+            "Добавление слова отменено.",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return ConversationHandler.END
+    
+    if text == "1️⃣ → 2️⃣ (Infinitive → Past Simple)":
+        context.user_data["form_pair"] = "1-2"
+        await update.message.reply_text(
+            "Введи первую форму глагола (Infinitive):\n"
+            "Например: go",
+            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+        )
+    elif text == "2️⃣ → 3️⃣ (Past Simple → Past Participle)":
+        context.user_data["form_pair"] = "2-3"
+        await update.message.reply_text(
+            "Введи вторую форму глагола (Past Simple):\n"
+            "Например: went",
+            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+        )
+    else:
+        await update.message.reply_text(
+            "Пожалуйста, выбери одну из кнопок.",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return ConversationHandler.END
     
     return ADDING_WORD1
 
 
 async def add_word1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle first word input."""
-    context.user_data["word1"] = update.message.text.strip()
+    text = update.message.text.strip()
+    
+    if text == "❌ Отмена":
+        await update.message.reply_text(
+            "Добавление слова отменено.",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return ConversationHandler.END
+    
+    context.user_data["word1"] = text
     word_type = context.user_data.get("word_type")
     
     if word_type == "translation":
         await update.message.reply_text("Теперь введи перевод на русский:")
     else:
-        await update.message.reply_text(
-            "Введи вторую форму глагола (Past Simple):\n"
-            "Например: went"
-        )
+        form_pair = context.user_data.get("form_pair")
+        if form_pair == "1-2":
+            await update.message.reply_text(
+                "Введи вторую форму глагола (Past Simple):\n"
+                "Например: went",
+                reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+            )
+        else:
+            await update.message.reply_text(
+                "Введи третью форму глагола (Past Participle):\n"
+                "Например: gone",
+                reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+            )
     
     return ADDING_WORD2
 
 
 async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle second word input."""
-    context.user_data["word2"] = update.message.text.strip()
+    text = update.message.text.strip()
+    
+    if text == "❌ Отмена":
+        await update.message.reply_text(
+            "Добавление слова отменено.",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return ConversationHandler.END
+    
+    context.user_data["word2"] = text
     word_type = context.user_data.get("word_type")
     
+    word1 = context.user_data["word1"]
+    word2 = context.user_data["word2"]
+    
     if word_type == "translation":
-        word1 = context.user_data["word1"]
-        word2 = context.user_data["word2"]
-        
         db.add_translation_word(update.effective_user.id, word1, word2)
         
         await update.message.reply_text(
@@ -126,28 +199,22 @@ async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             f"🔤 {word1} — {word2}",
             reply_markup=MAIN_MENU_KEYBOARD
         )
-        return ConversationHandler.END
     else:
+        form_pair = context.user_data.get("form_pair")
+        db.add_irregular_verb(update.effective_user.id, word1, word2, form_pair)
+        
+        if form_pair == "1-2":
+            form_label = "Infinitive → Past Simple"
+        else:
+            form_label = "Past Simple → Past Participle"
+        
         await update.message.reply_text(
-            "Введи третью форму глагола (Past Participle):\n"
-            "Например: gone"
+            f"✅ Неправильный глагол добавлен!\n\n"
+            f"📖 {word1} → {word2}\n"
+            f"({form_label})",
+            reply_markup=MAIN_MENU_KEYBOARD
         )
-        return ADDING_WORD3
-
-
-async def add_word3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle third word input (for irregular verbs)."""
-    word1 = context.user_data["word1"]
-    word2 = context.user_data["word2"]
-    word3 = update.message.text.strip()
     
-    db.add_irregular_verb(update.effective_user.id, word1, word2, word3)
-    
-    await update.message.reply_text(
-        f"✅ Неправильный глагол добавлен!\n\n"
-        f"📖 {word1} — {word2} — {word3}",
-        reply_markup=MAIN_MENU_KEYBOARD
-    )
     return ConversationHandler.END
 
 
@@ -176,16 +243,16 @@ def generate_quiz_question(word: dict, all_words: list) -> dict:
             correct_answer = word["word1"]
             wrong_pool = [w["word1"] for w in all_words if w["id"] != word["id"]]
     else:
-        form_choice = random.choice([1, 2])
+        form_pair = word.get("word3", "1-2")
         
-        if form_choice == 1:
+        if form_pair == "1-2":
             question = f"Какая вторая форма (Past Simple) глагола: **{word['word1']}**?"
             correct_answer = word["word2"]
-            wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"]]
+            wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"] and w.get("word3") == "1-2"]
         else:
             question = f"Какая третья форма (Past Participle) глагола: **{word['word1']}**?"
-            correct_answer = word["word3"]
-            wrong_pool = [w["word3"] for w in all_words if w["id"] != word["id"] and w["word3"]]
+            correct_answer = word["word2"]
+            wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"] and w.get("word3") == "2-3"]
     
     wrong_answers = random.sample(wrong_pool, min(3, len(wrong_pool)))
     
@@ -439,9 +506,9 @@ def main() -> None:
         ],
         states={
             ADDING_TYPE: [CallbackQueryHandler(add_word_type_chosen, pattern="^type_")],
+            ADDING_VERB_FORMS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_verb_forms_chosen)],
             ADDING_WORD1: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_word1)],
             ADDING_WORD2: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_word2)],
-            ADDING_WORD3: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_word3)],
         },
         fallbacks=[CommandHandler("cancel", cancel_adding), CommandHandler("start", start)],
     )
