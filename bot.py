@@ -525,7 +525,7 @@ def build_delete_words_keyboard(words: list, page: int, total_count: int) -> Inl
     return InlineKeyboardMarkup(keyboard)
 
 
-async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the word deletion process."""
     user_id = update.effective_user.id
     total_count = db.get_word_count(user_id)
@@ -535,7 +535,7 @@ async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "You don't have any words added yet! 📭",
             reply_markup=MAIN_MENU_KEYBOARD
         )
-        return
+        return ConversationHandler.END
     
     words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
     keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
@@ -547,6 +547,7 @@ async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"🗑 Choose a word to delete:\n{page_info}",
         reply_markup=keyboard
     )
+    return ConversationHandler.END
 
 
 async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -667,7 +668,7 @@ def build_view_words_keyboard(page: int, total_pages: int) -> InlineKeyboardMark
     return InlineKeyboardMarkup(keyboard)
 
 
-async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start viewing words."""
     user_id = update.effective_user.id
     total_count = db.get_word_count(user_id)
@@ -677,7 +678,7 @@ async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "You don't have any words added yet! 📭",
             reply_markup=MAIN_MENU_KEYBOARD
         )
-        return
+        return ConversationHandler.END
     
     words = db.get_words_paginated(user_id, offset=0, limit=VIEW_WORDS_PER_PAGE)
     total_pages = get_view_total_pages(total_count)
@@ -686,6 +687,7 @@ async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     keyboard = build_view_words_keyboard(page=0, total_pages=total_pages)
     
     await update.message.reply_text(message_text, reply_markup=keyboard)
+    return ConversationHandler.END
 
 
 async def handle_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -746,7 +748,12 @@ def main() -> None:
             ADDING_WORD1: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_word1)],
             ADDING_WORD2: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_word2)],
         },
-        fallbacks=[CommandHandler("cancel", cancel_adding), CommandHandler("start", start)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_adding),
+            CommandHandler("start", start),
+            MessageHandler(filters.Regex("^🗑 Delete Word$"), delete_word_start),
+            MessageHandler(filters.Regex("^👀 View Words$"), view_words_start),
+        ],
     )
     
     quiz_handler = ConversationHandler(
@@ -760,7 +767,12 @@ def main() -> None:
                 CallbackQueryHandler(next_question, pattern="^next_question$"),
             ],
         },
-        fallbacks=[CommandHandler("cancel", cancel_adding), CommandHandler("start", start)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_adding),
+            CommandHandler("start", start),
+            MessageHandler(filters.Regex("^🗑 Delete Word$"), delete_word_start),
+            MessageHandler(filters.Regex("^👀 View Words$"), view_words_start),
+        ],
     )
     
     application.add_handler(CommandHandler("start", start))
