@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 
 MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
     [
-        ["📚 Тест по всем словам"],
-        ["📝 Тест по 30 последним словам"],
-        ["➕ Добавить слово"],
-        ["👀 Посмотреть слова"],
-        ["🗑 Удалить слово"]
+        ["📚 Test All Words"],
+        ["📝 Test Last 30 Words"],
+        ["➕ Add Word"],
+        ["👀 View Words"],
+        ["🗑 Delete Word"]
     ],
     resize_keyboard=True
 )
@@ -46,18 +46,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     if is_new:
         welcome_text = (
-            f"Привет, {user.first_name}! 👋\n\n"
-            "Добро пожаловать в бот для изучения английского языка!\n\n"
-            "Здесь ты можешь:\n"
-            "📚 Проходить тесты по всем добавленным словам\n"
-            "📝 Тестировать последние 30 слов\n"
-            "➕ Добавлять новые слова (переводы и неправильные глаголы)\n\n"
-            "Выбери действие из меню ниже:"
+            f"Hello, {user.first_name}! 👋\n\n"
+            "Welcome to the English vocabulary learning bot!\n\n"
+            "Here you can:\n"
+            "📚 Take tests on all added words\n"
+            "📝 Test the last 30 words\n"
+            "➕ Add new words (translations and irregular verbs)\n\n"
+            "Choose an action from the menu below:"
         )
     else:
         welcome_text = (
-            f"С возвращением, {user.first_name}! 👋\n\n"
-            "Выбери действие из меню ниже:"
+            f"Welcome back, {user.first_name}! 👋\n\n"
+            "Choose an action from the menu below:"
         )
     
     await update.message.reply_text(welcome_text, reply_markup=MAIN_MENU_KEYBOARD)
@@ -66,12 +66,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def add_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the word adding process."""
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔤 Перевод (English ↔ Русский)", callback_data="type_translation")],
-        [InlineKeyboardButton("📖 Неправильный глагол (3 формы)", callback_data="type_irregular")]
+        [InlineKeyboardButton("🔤 Translation (English ↔ Russian)", callback_data="type_translation")],
+        [InlineKeyboardButton("📖 Irregular Verb (3 forms)", callback_data="type_irregular")]
     ])
     
     await update.message.reply_text(
-        "Какой тип слова ты хочешь добавить?",
+        "What type of word would you like to add?",
         reply_markup=keyboard
     )
     return ADDING_TYPE
@@ -87,7 +87,7 @@ async def add_word_type_chosen(update: Update, context: ContextTypes.DEFAULT_TYP
     
     if word_type == "translation":
         await query.edit_message_text(
-            "Введи английское слово:"
+            "Enter the English word:"
         )
         return ADDING_WORD1
     else:
@@ -95,15 +95,15 @@ async def add_word_type_chosen(update: Update, context: ContextTypes.DEFAULT_TYP
             [
                 ["1️⃣ → 2️⃣ (Infinitive → Past Simple)"],
                 ["2️⃣ → 3️⃣ (Past Simple → Past Participle)"],
-                ["❌ Отмена"]
+                ["❌ Cancel"]
             ],
             resize_keyboard=True
         )
         await query.edit_message_text(
-            "Выбери какие формы неправильного глагола ты хочешь добавить:"
+            "Choose which forms of the irregular verb you want to add:"
         )
         await query.message.reply_text(
-            "Выбери пару форм:",
+            "Choose a pair of forms:",
             reply_markup=keyboard
         )
         return ADDING_VERB_FORMS
@@ -113,9 +113,9 @@ async def add_verb_forms_chosen(update: Update, context: ContextTypes.DEFAULT_TY
     """Handle verb forms selection."""
     text = update.message.text
     
-    if text == "❌ Отмена":
+    if text == "❌ Cancel":
         await update.message.reply_text(
-            "Добавление слова отменено.",
+            "Word addition cancelled.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -123,20 +123,20 @@ async def add_verb_forms_chosen(update: Update, context: ContextTypes.DEFAULT_TY
     if text == "1️⃣ → 2️⃣ (Infinitive → Past Simple)":
         context.user_data["form_pair"] = "1-2"
         await update.message.reply_text(
-            "Введи первую форму глагола (Infinitive):\n"
-            "Например: go",
-            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+            "Enter the first form of the verb (Infinitive):\n"
+            "For example: go",
+            reply_markup=ReplyKeyboardMarkup([["❌ Cancel"]], resize_keyboard=True)
         )
     elif text == "2️⃣ → 3️⃣ (Past Simple → Past Participle)":
         context.user_data["form_pair"] = "2-3"
         await update.message.reply_text(
-            "Введи вторую форму глагола (Past Simple):\n"
-            "Например: went",
-            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+            "Enter the second form of the verb (Past Simple):\n"
+            "For example: went",
+            reply_markup=ReplyKeyboardMarkup([["❌ Cancel"]], resize_keyboard=True)
         )
     else:
         await update.message.reply_text(
-            "Пожалуйста, выбери одну из кнопок.",
+            "Please choose one of the buttons.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -148,9 +148,9 @@ async def add_word1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle first word input."""
     text = update.message.text.strip()
     
-    if text == "❌ Отмена":
+    if text == "❌ Cancel":
         await update.message.reply_text(
-            "Добавление слова отменено.",
+            "Word addition cancelled.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -159,20 +159,20 @@ async def add_word1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     word_type = context.user_data.get("word_type")
     
     if word_type == "translation":
-        await update.message.reply_text("Теперь введи перевод на русский:")
+        await update.message.reply_text("Now enter the Russian translation:")
     else:
         form_pair = context.user_data.get("form_pair")
         if form_pair == "1-2":
             await update.message.reply_text(
-                "Введи вторую форму глагола (Past Simple):\n"
-                "Например: went",
-                reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+                "Enter the second form of the verb (Past Simple):\n"
+                "For example: went",
+                reply_markup=ReplyKeyboardMarkup([["❌ Cancel"]], resize_keyboard=True)
             )
         else:
             await update.message.reply_text(
-                "Введи третью форму глагола (Past Participle):\n"
-                "Например: gone",
-                reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True)
+                "Enter the third form of the verb (Past Participle):\n"
+                "For example: gone",
+                reply_markup=ReplyKeyboardMarkup([["❌ Cancel"]], resize_keyboard=True)
             )
     
     return ADDING_WORD2
@@ -182,9 +182,9 @@ async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle second word input."""
     text = update.message.text.strip()
     
-    if text == "❌ Отмена":
+    if text == "❌ Cancel":
         await update.message.reply_text(
-            "Добавление слова отменено.",
+            "Word addition cancelled.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -199,7 +199,7 @@ async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         db.add_translation_word(update.effective_user.id, word1, word2)
         
         await update.message.reply_text(
-            f"✅ Слово добавлено!\n\n"
+            f"✅ Word added!\n\n"
             f"🔤 {word1} — {word2}",
             reply_markup=MAIN_MENU_KEYBOARD
         )
@@ -213,7 +213,7 @@ async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             form_label = "Past Simple → Past Participle"
         
         await update.message.reply_text(
-            f"✅ Неправильный глагол добавлен!\n\n"
+            f"✅ Irregular verb added!\n\n"
             f"📖 {word1} → {word2}\n"
             f"({form_label})",
             reply_markup=MAIN_MENU_KEYBOARD
@@ -225,7 +225,7 @@ async def add_word2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def cancel_adding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel word adding."""
     await update.message.reply_text(
-        "Добавление слова отменено.",
+        "Word addition cancelled.",
         reply_markup=MAIN_MENU_KEYBOARD
     )
     return ConversationHandler.END
@@ -239,22 +239,22 @@ def generate_quiz_question(word: dict, all_words: list) -> dict:
         ask_english = random.choice([True, False])
         
         if ask_english:
-            question = f"Как переводится слово: **{word['word1']}**?"
+            question = f"What is the translation of: **{word['word1']}**?"
             correct_answer = word["word2"]
             wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"]]
         else:
-            question = f"Как переводится: **{word['word2']}**?"
+            question = f"What is the translation of: **{word['word2']}**?"
             correct_answer = word["word1"]
             wrong_pool = [w["word1"] for w in all_words if w["id"] != word["id"]]
     else:
         form_pair = word.get("word3", "1-2")
         
         if form_pair == "1-2":
-            question = f"Какая вторая форма (Past Simple) глагола: **{word['word1']}**?"
+            question = f"What is the second form (Past Simple) of: **{word['word1']}**?"
             correct_answer = word["word2"]
             wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"] and w.get("word3") == "1-2"]
         else:
-            question = f"Какая третья форма (Past Participle) глагола: **{word['word1']}**?"
+            question = f"What is the third form (Past Participle) of: **{word['word1']}**?"
             correct_answer = word["word2"]
             wrong_pool = [w["word2"] for w in all_words if w["id"] != word["id"] and w.get("word3") == "2-3"]
     
@@ -282,8 +282,8 @@ async def start_quiz_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if not all_words:
         await update.message.reply_text(
-            "У тебя пока нет добавленных слов! 📭\n"
-            "Сначала добавь несколько слов через меню.",
+            "You don't have any words added yet! 📭\n"
+            "First add some words through the menu.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -313,8 +313,8 @@ async def start_quiz_last30(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     if not all_last_words:
         await update.message.reply_text(
-            "У тебя пока нет добавленных слов! 📭\n"
-            "Сначала добавь несколько слов через меню.",
+            "You don't have any words added yet! 📭\n"
+            "First add some words through the menu.",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return ConversationHandler.END
@@ -356,9 +356,9 @@ async def send_quiz_question(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for i, option in enumerate(question_data["options"]):
         keyboard.append([InlineKeyboardButton(option, callback_data=f"answer_{i}")])
     
-    keyboard.append([InlineKeyboardButton("❌ Завершить тест", callback_data="quit_quiz")])
+    keyboard.append([InlineKeyboardButton("❌ Finish Test", callback_data="quit_quiz")])
     
-    progress = f"Вопрос {quiz_index + 1}/{context.user_data['quiz_total']}"
+    progress = f"Question {quiz_index + 1}/{context.user_data['quiz_total']}"
     message_text = f"📊 {progress}\n\n{question_data['question']}"
     
     if update.callback_query:
@@ -390,7 +390,7 @@ async def handle_quiz_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     if not question_data:
         await query.edit_message_text(
-            "Произошла ошибка. Начни тест заново.",
+            "An error occurred. Start the test again.",
             reply_markup=None
         )
         return ConversationHandler.END
@@ -400,13 +400,13 @@ async def handle_quiz_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     if selected_answer == correct_answer:
         context.user_data["quiz_score"] = context.user_data.get("quiz_score", 0) + 1
-        result_text = "✅ Правильно!"
+        result_text = "✅ Correct!"
     else:
-        result_text = f"❌ Неправильно!\nПравильный ответ: {correct_answer}"
+        result_text = f"❌ Incorrect!\nCorrect answer: {correct_answer}"
     
     context.user_data["quiz_index"] = context.user_data.get("quiz_index", 0) + 1
     
-    keyboard = [[InlineKeyboardButton("➡️ Следующий вопрос", callback_data="next_question")]]
+    keyboard = [[InlineKeyboardButton("➡️ Next Question", callback_data="next_question")]]
     
     await query.edit_message_text(
         f"{result_text}",
@@ -443,9 +443,9 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quit_earl
     
     if quit_early:
         result_text = (
-            f"🏁 Тест завершён досрочно!\n\n"
-            f"📊 Результат: {score}/{answered}\n"
-            f"📈 Процент правильных: {percentage:.1f}%"
+            f"🏁 Test finished early!\n\n"
+            f"📊 Result: {score}/{answered}\n"
+            f"📈 Correct percentage: {percentage:.1f}%"
         )
     else:
         if percentage >= 90:
@@ -458,9 +458,9 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quit_earl
             emoji = "💪"
         
         result_text = (
-            f"{emoji} Тест завершён!\n\n"
-            f"📊 Результат: {score}/{total}\n"
-            f"📈 Процент правильных: {percentage:.1f}%"
+            f"{emoji} Test finished!\n\n"
+            f"📊 Result: {score}/{total}\n"
+            f"📈 Correct percentage: {percentage:.1f}%"
         )
     
     context.user_data.pop("quiz_words", None)
@@ -474,7 +474,7 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quit_earl
     if update.callback_query:
         await update.callback_query.edit_message_text(result_text)
         await update.callback_query.message.reply_text(
-            "Выбери следующее действие:",
+            "Choose the next action:",
             reply_markup=MAIN_MENU_KEYBOARD
         )
     else:
@@ -512,15 +512,15 @@ def build_delete_words_keyboard(words: list, page: int, total_count: int) -> Inl
     total_pages = get_total_pages(total_count)
     
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"del_page_{page - 1}"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"del_page_{page - 1}"))
     
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"del_page_{page + 1}"))
+        nav_buttons.append(InlineKeyboardButton("Forward ➡️", callback_data=f"del_page_{page + 1}"))
     
     if nav_buttons:
         keyboard.append(nav_buttons)
     
-    keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data="del_close")])
+    keyboard.append([InlineKeyboardButton("❌ Close", callback_data="del_close")])
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -532,7 +532,7 @@ async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     if total_count == 0:
         await update.message.reply_text(
-            "У тебя пока нет добавленных слов! 📭",
+            "You don't have any words added yet! 📭",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return
@@ -541,10 +541,10 @@ async def delete_word_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
     
     total_pages = get_total_pages(total_count)
-    page_info = f"Страница 1/{total_pages}" if total_pages > 1 else ""
+    page_info = f"Page 1/{total_pages}" if total_pages > 1 else ""
     
     await update.message.reply_text(
-        f"🗑 Выбери слово для удаления:\n{page_info}",
+        f"🗑 Choose a word to delete:\n{page_info}",
         reply_markup=keyboard
     )
 
@@ -558,7 +558,7 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
     data = query.data
     
     if data == "del_close":
-        await query.edit_message_text("Удаление отменено.")
+        await query.edit_message_text("Deletion cancelled.")
         return
     
     if data.startswith("del_page_"):
@@ -569,15 +569,15 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         words = db.get_words_paginated(user_id, offset=offset, limit=DELETE_WORDS_PER_PAGE)
         
         if not words:
-            await query.edit_message_text("Слова не найдены.")
+            await query.edit_message_text("Words not found.")
             return
         
         keyboard = build_delete_words_keyboard(words, page=page, total_count=total_count)
         total_pages = get_total_pages(total_count)
-        page_info = f"Страница {page + 1}/{total_pages}" if total_pages > 1 else ""
+        page_info = f"Page {page + 1}/{total_pages}" if total_pages > 1 else ""
         
         await query.edit_message_text(
-            f"🗑 Выбери слово для удаления:\n{page_info}",
+            f"🗑 Choose a word to delete:\n{page_info}",
             reply_markup=keyboard
         )
         return
@@ -587,13 +587,13 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("✅ Да, удалить", callback_data=f"del_confirm_{word_id}"),
-                InlineKeyboardButton("❌ Нет", callback_data="del_cancel")
+                InlineKeyboardButton("✅ Yes, delete", callback_data=f"del_confirm_{word_id}"),
+                InlineKeyboardButton("❌ No", callback_data="del_cancel")
             ]
         ])
         
         await query.edit_message_text(
-            "❓ Ты уверен, что хочешь удалить это слово?",
+            "❓ Are you sure you want to delete this word?",
             reply_markup=keyboard
         )
         return
@@ -602,9 +602,9 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         word_id = int(data.replace("del_confirm_", ""))
         
         if db.delete_word(user_id, word_id):
-            await query.edit_message_text("✅ Слово удалено!")
+            await query.edit_message_text("✅ Word deleted!")
         else:
-            await query.edit_message_text("❌ Не удалось удалить слово.")
+            await query.edit_message_text("❌ Failed to delete word.")
         return
     
     if data == "del_cancel":
@@ -612,16 +612,16 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         total_count = db.get_word_count(user_id)
         
         if total_count == 0:
-            await query.edit_message_text("У тебя больше нет слов для удаления! 📭")
+            await query.edit_message_text("You have no more words to delete! 📭")
             return
         
         words = db.get_words_paginated(user_id, offset=0, limit=DELETE_WORDS_PER_PAGE)
         keyboard = build_delete_words_keyboard(words, page=0, total_count=total_count)
         total_pages = get_total_pages(total_count)
-        page_info = f"Страница 1/{total_pages}" if total_pages > 1 else ""
+        page_info = f"Page 1/{total_pages}" if total_pages > 1 else ""
         
         await query.edit_message_text(
-            f"🗑 Выбери слово для удаления:\n{page_info}",
+            f"🗑 Choose a word to delete:\n{page_info}",
             reply_markup=keyboard
         )
 
@@ -641,11 +641,11 @@ def build_view_words_message(words: list, page: int, total_pages: int) -> str:
         else:
             lines.append(f"{i}. 📖 {word['word1']} → {word['word2']}")
     
-    words_text = "\n".join(lines) if lines else "Нет слов"
+    words_text = "\n".join(lines) if lines else "No words"
     page_info = f"\n\n📄 {page + 1}/{total_pages}"
-    legend = "🔤 — перевод (translation)\n📖 — неправильный глагол (irregular verb)\n"
+    legend = "🔤 — translation\n📖 — irregular verb\n"
     
-    return f"📚 Твои слова:\n\n{legend}\n{words_text}{page_info}"
+    return f"📚 Your words:\n\n{legend}\n{words_text}{page_info}"
 
 
 def build_view_words_keyboard(page: int, total_pages: int) -> InlineKeyboardMarkup:
@@ -653,16 +653,16 @@ def build_view_words_keyboard(page: int, total_pages: int) -> InlineKeyboardMark
     nav_buttons = []
     
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"view_page_{page - 1}"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"view_page_{page - 1}"))
     
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"view_page_{page + 1}"))
+        nav_buttons.append(InlineKeyboardButton("Forward ➡️", callback_data=f"view_page_{page + 1}"))
     
     keyboard = []
     if nav_buttons:
         keyboard.append(nav_buttons)
     
-    keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data="view_close")])
+    keyboard.append([InlineKeyboardButton("❌ Close", callback_data="view_close")])
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -674,7 +674,7 @@ async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     if total_count == 0:
         await update.message.reply_text(
-            "У тебя пока нет добавленных слов! 📭",
+            "You don't have any words added yet! 📭",
             reply_markup=MAIN_MENU_KEYBOARD
         )
         return
@@ -697,7 +697,7 @@ async def handle_view_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     data = query.data
     
     if data == "view_close":
-        await query.edit_message_text("Список слов закрыт.")
+        await query.edit_message_text("Word list closed.")
         return
     
     if data.startswith("view_page_"):
@@ -708,7 +708,7 @@ async def handle_view_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         words = db.get_words_paginated(user_id, offset=offset, limit=VIEW_WORDS_PER_PAGE)
         
         if not words:
-            await query.edit_message_text("Слова не найдены.")
+            await query.edit_message_text("Words not found.")
             return
         
         total_pages = get_view_total_pages(total_count)
@@ -722,11 +722,11 @@ async def handle_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Handle main menu button presses."""
     text = update.message.text
     
-    if text == "📚 Тест по всем словам":
+    if text == "📚 Test All Words":
         await start_quiz_all(update, context)
-    elif text == "📝 Тест по 30 последним словам":
+    elif text == "📝 Test Last 30 Words":
         await start_quiz_last30(update, context)
-    elif text == "➕ Добавить слово":
+    elif text == "➕ Add Word":
         await add_word_start(update, context)
 
 
@@ -738,7 +738,7 @@ def main() -> None:
     
     add_word_handler = ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex("^➕ Добавить слово$"), add_word_start)
+            MessageHandler(filters.Regex("^➕ Add Word$"), add_word_start)
         ],
         states={
             ADDING_TYPE: [CallbackQueryHandler(add_word_type_chosen, pattern="^type_")],
@@ -751,8 +751,8 @@ def main() -> None:
     
     quiz_handler = ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex("^📚 Тест по всем словам$"), start_quiz_all),
-            MessageHandler(filters.Regex("^📝 Тест по 30 последним словам$"), start_quiz_last30),
+            MessageHandler(filters.Regex("^📚 Test All Words$"), start_quiz_all),
+            MessageHandler(filters.Regex("^📝 Test Last 30 Words$"), start_quiz_last30),
         ],
         states={
             QUIZ_ANSWER: [
@@ -766,9 +766,9 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(add_word_handler)
     application.add_handler(quiz_handler)
-    application.add_handler(MessageHandler(filters.Regex("^🗑 Удалить слово$"), delete_word_start))
+    application.add_handler(MessageHandler(filters.Regex("^🗑 Delete Word$"), delete_word_start))
     application.add_handler(CallbackQueryHandler(handle_delete_callback, pattern="^del_"))
-    application.add_handler(MessageHandler(filters.Regex("^👀 Посмотреть слова$"), view_words_start))
+    application.add_handler(MessageHandler(filters.Regex("^👀 View Words$"), view_words_start))
     application.add_handler(CallbackQueryHandler(handle_view_callback, pattern="^view_"))
     
     logger.info("Bot started!")
