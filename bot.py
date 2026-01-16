@@ -27,6 +27,7 @@ MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
         ["📚 Тест по всем словам"],
         ["📝 Тест по 30 последним словам"],
         ["➕ Добавить слово"],
+        ["👀 Посмотреть слова"],
         ["🗑 Удалить слово"]
     ],
     resize_keyboard=True
@@ -35,6 +36,7 @@ MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
 ADDING_TYPE, ADDING_VERB_FORMS, ADDING_WORD1, ADDING_WORD2 = range(4)
 QUIZ_ANSWER = range(4, 5)[0]
 DELETE_WORDS_PER_PAGE = 5
+VIEW_WORDS_PER_PAGE = 10
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -624,6 +626,97 @@ async def handle_delete_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
 
 
+def get_view_total_pages(total_count: int) -> int:
+    """Calculate total number of pages for view words pagination."""
+    return (total_count + VIEW_WORDS_PER_PAGE - 1) // VIEW_WORDS_PER_PAGE
+
+
+def build_view_words_message(words: list, page: int, total_pages: int) -> str:
+    """Build message text for viewing words."""
+    lines = []
+    start_num = page * VIEW_WORDS_PER_PAGE + 1
+    for i, word in enumerate(words, start=start_num):
+        if word["word_type"] == "translation":
+            lines.append(f"{i}. 🔤 {word['word1']} — {word['word2']}")
+        else:
+            lines.append(f"{i}. 📖 {word['word1']} → {word['word2']}")
+    
+    words_text = "\n".join(lines) if lines else "Нет слов"
+    page_info = f"\n\n📄 {page + 1}/{total_pages}"
+    
+    return f"📚 Твои слова:\n\n{words_text}{page_info}"
+
+
+def build_view_words_keyboard(page: int, total_pages: int) -> InlineKeyboardMarkup:
+    """Build inline keyboard for viewing words with pagination."""
+    nav_buttons = []
+    
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"view_page_{page - 1}"))
+    
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"view_page_{page + 1}"))
+    
+    keyboard = []
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+    
+    keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data="view_close")])
+    
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def view_words_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Start viewing words."""
+    user_id = update.effective_user.id
+    total_count = db.get_word_count(user_id)
+    
+    if total_count == 0:
+        await update.message.reply_text(
+            "У тебя пока нет добавленных слов! 📭",
+            reply_markup=MAIN_MENU_KEYBOARD
+        )
+        return
+    
+    words = db.get_words_paginated(user_id, offset=0, limit=VIEW_WORDS_PER_PAGE)
+    total_pages = get_view_total_pages(total_count)
+    
+    message_text = build_view_words_message(words, page=0, total_pages=total_pages)
+    keyboard = build_view_words_keyboard(page=0, total_pages=total_pages)
+    
+    await update.message.reply_text(message_text, reply_markup=keyboard)
+
+
+async def handle_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle view words callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    data = query.data
+    
+    if data == "view_close":
+        await query.edit_message_text("Список слов закрыт.")
+        return
+    
+    if data.startswith("view_page_"):
+        page = int(data.replace("view_page_", ""))
+        offset = page * VIEW_WORDS_PER_PAGE
+        
+        total_count = db.get_word_count(user_id)
+        words = db.get_words_paginated(user_id, offset=offset, limit=VIEW_WORDS_PER_PAGE)
+        
+        if not words:
+            await query.edit_message_text("Слова не найдены.")
+            return
+        
+        total_pages = get_view_total_pages(total_count)
+        message_text = build_view_words_message(words, page=page, total_pages=total_pages)
+        keyboard = build_view_words_keyboard(page=page, total_pages=total_pages)
+        
+        await query.edit_message_text(message_text, reply_markup=keyboard)
+
+
 async def handle_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle main menu button presses."""
     text = update.message.text
@@ -674,6 +767,8 @@ def main() -> None:
     application.add_handler(quiz_handler)
     application.add_handler(MessageHandler(filters.Regex("^🗑 Удалить слово$"), delete_word_start))
     application.add_handler(CallbackQueryHandler(handle_delete_callback, pattern="^del_"))
+    application.add_handler(MessageHandler(filters.Regex("^👀 Посмотреть слова$"), view_words_start))
+    application.add_handler(CallbackQueryHandler(handle_view_callback, pattern="^view_"))
     
     logger.info("Bot started!")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
