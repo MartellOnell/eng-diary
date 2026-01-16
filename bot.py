@@ -643,8 +643,9 @@ def build_view_words_message(words: list, page: int, total_pages: int) -> str:
     
     words_text = "\n".join(lines) if lines else "Нет слов"
     page_info = f"\n\n📄 {page + 1}/{total_pages}"
+    legend = "🔤 — перевод (translation)\n📖 — неправильный глагол (irregular verb)\n"
     
-    return f"📚 Твои слова:\n\n{words_text}{page_info}"
+    return f"📚 Твои слова:\n\n{legend}\n{words_text}{page_info}"
 
 
 def build_view_words_keyboard(page: int, total_pages: int) -> InlineKeyboardMarkup:
